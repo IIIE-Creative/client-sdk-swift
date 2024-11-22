@@ -17,31 +17,40 @@
 import Foundation
 
 #if canImport(ReplayKit)
-import ReplayKit
+    import ReplayKit
 #endif
 
 #if swift(>=5.9)
-internal import LiveKitWebRTC
+    internal import LiveKitWebRTC
 #else
-@_implementationOnly import LiveKitWebRTC
+    @_implementationOnly import LiveKitWebRTC
 #endif
 
 @objc
 public class LocalParticipant: Participant {
     @objc
-    public var localAudioTracks: [LocalTrackPublication] { audioTracks.compactMap { $0 as? LocalTrackPublication } }
+    public var localAudioTracks: [LocalTrackPublication] {
+        audioTracks.compactMap { $0 as? LocalTrackPublication }
+    }
 
     @objc
-    public var localVideoTracks: [LocalTrackPublication] { videoTracks.compactMap { $0 as? LocalTrackPublication } }
+    public var localVideoTracks: [LocalTrackPublication] {
+        videoTracks.compactMap { $0 as? LocalTrackPublication }
+    }
 
     private var allParticipantsAllowed: Bool = true
 
     private var trackPermissions: [ParticipantTrackPermission] = []
 
+    private let _rpcSerialRunner = SerialRunnerActor<[String: (RpcInvocationData) async throws -> String]>()
+    private var _rpcHandlers: [String: (RpcInvocationData) async throws -> String] = [:]
+
     /// publish a new audio track to the Room
     @objc
     @discardableResult
-    public func publish(audioTrack: LocalAudioTrack, options: AudioPublishOptions? = nil) async throws -> LocalTrackPublication {
+    public func publish(audioTrack: LocalAudioTrack, options: AudioPublishOptions? = nil)
+        async throws -> LocalTrackPublication
+    {
         let result = try await _publishSerialRunner.run {
             try await self._publish(track: audioTrack, options: options)
         }
@@ -52,7 +61,9 @@ public class LocalParticipant: Participant {
     /// publish a new video track to the Room
     @objc
     @discardableResult
-    public func publish(videoTrack: LocalVideoTrack, options: VideoPublishOptions? = nil) async throws -> LocalTrackPublication {
+    public func publish(videoTrack: LocalVideoTrack, options: VideoPublishOptions? = nil)
+        async throws -> LocalTrackPublication
+    {
         let result = try await _publishSerialRunner.run {
             try await self._publish(track: videoTrack, options: options)
         }
@@ -63,7 +74,9 @@ public class LocalParticipant: Participant {
     @objc
     override public func unpublishAll(notify _notify: Bool = true) async {
         // Build a list of Publications
-        let publications = _state.trackPublications.values.compactMap { $0 as? LocalTrackPublication }
+        let publications = _state.trackPublications.values.compactMap {
+            $0 as? LocalTrackPublication
+        }
         for publication in publications {
             do {
                 try await unpublish(publication: publication, notify: _notify)
@@ -76,7 +89,9 @@ public class LocalParticipant: Participant {
     /// unpublish an existing published track
     /// this will also stop the track
     @objc
-    public func unpublish(publication: LocalTrackPublication, notify _notify: Bool = true) async throws {
+    public func unpublish(publication: LocalTrackPublication, notify _notify: Bool = true)
+        async throws
+    {
         let room = try requireRoom()
 
         func _notifyDidUnpublish() async {
@@ -162,9 +177,10 @@ public class LocalParticipant: Participant {
      *  participant/track. Any omitted participants will not receive any permissions.
      */
     @objc
-    public func setTrackSubscriptionPermissions(allParticipantsAllowed: Bool,
-                                                trackPermissions: [ParticipantTrackPermission] = []) async throws
-    {
+    public func setTrackSubscriptionPermissions(
+        allParticipantsAllowed: Bool,
+        trackPermissions: [ParticipantTrackPermission] = []
+    ) async throws {
         self.allParticipantsAllowed = allParticipantsAllowed
         self.trackPermissions = trackPermissions
 
@@ -199,14 +215,17 @@ public class LocalParticipant: Participant {
         let room = try requireRoom()
         guard room._state.connectionState == .connected else { return }
 
-        try await room.signalClient.sendUpdateSubscriptionPermission(allParticipants: allParticipantsAllowed,
-                                                                     trackPermissions: trackPermissions)
+        try await room.signalClient.sendUpdateSubscriptionPermission(
+            allParticipants: allParticipantsAllowed,
+            trackPermissions: trackPermissions)
     }
 
-    func _set(subscribedQualities qualities: [Livekit_SubscribedQuality], forTrackSid trackSid: Track.Sid) {
+    func _set(
+        subscribedQualities qualities: [Livekit_SubscribedQuality], forTrackSid trackSid: Track.Sid
+    ) {
         guard let publication = trackPublications[trackSid],
-              let track = publication.track as? LocalVideoTrack,
-              let sender = track._state.rtpSender
+            let track = publication.track as? LocalVideoTrack,
+            let sender = track._state.rtpSender
         else { return }
 
         sender._set(subscribedQualities: qualities)
@@ -245,7 +264,8 @@ extension LocalParticipant {
     }
 
     func republishAllTracks() async throws {
-        let mediaTracks = _state.trackPublications.values.map { $0.track as? LocalTrack }.compactMap { $0 }
+        let mediaTracks = _state.trackPublications.values.map { $0.track as? LocalTrack }.compactMap
+        { $0 }
 
         await unpublishAll()
 
@@ -259,29 +279,33 @@ extension LocalParticipant {
 
 // MARK: - Simplified API
 
-public extension LocalParticipant {
+extension LocalParticipant {
     @objc
     @discardableResult
-    func setCamera(enabled: Bool,
-                   captureOptions: CameraCaptureOptions? = nil,
-                   publishOptions: VideoPublishOptions? = nil) async throws -> LocalTrackPublication?
-    {
-        try await set(source: .camera,
-                      enabled: enabled,
-                      captureOptions: captureOptions,
-                      publishOptions: publishOptions)
+    public func setCamera(
+        enabled: Bool,
+        captureOptions: CameraCaptureOptions? = nil,
+        publishOptions: VideoPublishOptions? = nil
+    ) async throws -> LocalTrackPublication? {
+        try await set(
+            source: .camera,
+            enabled: enabled,
+            captureOptions: captureOptions,
+            publishOptions: publishOptions)
     }
 
     @objc
     @discardableResult
-    func setMicrophone(enabled: Bool,
-                       captureOptions: AudioCaptureOptions? = nil,
-                       publishOptions: AudioPublishOptions? = nil) async throws -> LocalTrackPublication?
-    {
-        try await set(source: .microphone,
-                      enabled: enabled,
-                      captureOptions: captureOptions,
-                      publishOptions: publishOptions)
+    public func setMicrophone(
+        enabled: Bool,
+        captureOptions: AudioCaptureOptions? = nil,
+        publishOptions: AudioPublishOptions? = nil
+    ) async throws -> LocalTrackPublication? {
+        try await set(
+            source: .microphone,
+            enabled: enabled,
+            captureOptions: captureOptions,
+            publishOptions: publishOptions)
     }
 
     /// Enable or disable screen sharing. This has different behavior depending on the platform.
@@ -295,22 +319,24 @@ public extension LocalParticipant {
     /// For advanced usage, you can create a relevant ``LocalVideoTrack`` and call ``LocalParticipant/publishVideoTrack(track:publishOptions:)``.
     @objc
     @discardableResult
-    func setScreenShare(enabled: Bool) async throws -> LocalTrackPublication? {
+    public func setScreenShare(enabled: Bool) async throws -> LocalTrackPublication? {
         try await set(source: .screenShareVideo, enabled: enabled)
     }
 
     @objc
     @discardableResult
-    func set(source: Track.Source,
-             enabled: Bool,
-             captureOptions: CaptureOptions? = nil,
-             publishOptions: TrackPublishOptions? = nil) async throws -> LocalTrackPublication?
-    {
+    public func set(
+        source: Track.Source,
+        enabled: Bool,
+        captureOptions: CaptureOptions? = nil,
+        publishOptions: TrackPublishOptions? = nil
+    ) async throws -> LocalTrackPublication? {
         try await _publishSerialRunner.run {
             let room = try self.requireRoom()
 
             // Try to get existing publication
-            if let publication = self.getTrackPublication(source: source) as? LocalTrackPublication {
+            if let publication = self.getTrackPublication(source: source) as? LocalTrackPublication
+            {
                 if enabled {
                     try await publication.unmute()
                     return publication
@@ -325,33 +351,47 @@ public extension LocalParticipant {
             } else if enabled {
                 // Try to create a new track
                 if source == .camera {
-                    let localTrack = LocalVideoTrack.createCameraTrack(options: (captureOptions as? CameraCaptureOptions) ?? room._state.roomOptions.defaultCameraCaptureOptions,
-                                                                       reportStatistics: room._state.roomOptions.reportRemoteTrackStatistics)
+                    let localTrack = LocalVideoTrack.createCameraTrack(
+                        options: (captureOptions as? CameraCaptureOptions)
+                            ?? room._state.roomOptions.defaultCameraCaptureOptions,
+                        reportStatistics: room._state.roomOptions.reportRemoteTrackStatistics)
                     return try await self._publish(track: localTrack, options: publishOptions)
                 } else if source == .microphone {
-                    let localTrack = LocalAudioTrack.createTrack(options: (captureOptions as? AudioCaptureOptions) ?? room._state.roomOptions.defaultAudioCaptureOptions,
-                                                                 reportStatistics: room._state.roomOptions.reportRemoteTrackStatistics)
+                    let localTrack = LocalAudioTrack.createTrack(
+                        options: (captureOptions as? AudioCaptureOptions)
+                            ?? room._state.roomOptions.defaultAudioCaptureOptions,
+                        reportStatistics: room._state.roomOptions.reportRemoteTrackStatistics)
                     return try await self._publish(track: localTrack, options: publishOptions)
                 } else if source == .screenShareVideo {
                     #if os(iOS)
-                    let localTrack: LocalVideoTrack
-                    let options = (captureOptions as? ScreenShareCaptureOptions) ?? room._state.roomOptions.defaultScreenShareCaptureOptions
-                    if options.useBroadcastExtension {
-                        let screenShareExtensionId = Bundle.main.infoDictionary?[BroadcastScreenCapturer.kRTCScreenSharingExtension] as? String
-                        await RPSystemBroadcastPickerView.show(for: screenShareExtensionId, showsMicrophoneButton: false)
-                        localTrack = LocalVideoTrack.createBroadcastScreenCapturerTrack(options: options)
-                    } else {
-                        localTrack = LocalVideoTrack.createInAppScreenShareTrack(options: options)
-                    }
-                    return try await self._publish(track: localTrack, options: publishOptions)
+                        let localTrack: LocalVideoTrack
+                        let options =
+                            (captureOptions as? ScreenShareCaptureOptions)
+                            ?? room._state.roomOptions.defaultScreenShareCaptureOptions
+                        if options.useBroadcastExtension {
+                            let screenShareExtensionId =
+                                Bundle.main.infoDictionary?[
+                                    BroadcastScreenCapturer.kRTCScreenSharingExtension] as? String
+                            await RPSystemBroadcastPickerView.show(
+                                for: screenShareExtensionId, showsMicrophoneButton: false)
+                            localTrack = LocalVideoTrack.createBroadcastScreenCapturerTrack(
+                                options: options)
+                        } else {
+                            localTrack = LocalVideoTrack.createInAppScreenShareTrack(
+                                options: options)
+                        }
+                        return try await self._publish(track: localTrack, options: publishOptions)
                     #elseif os(macOS)
-                    if #available(macOS 12.3, *) {
-                        let mainDisplay = try await MacOSScreenCapturer.mainDisplaySource()
-                        let track = LocalVideoTrack.createMacOSScreenShareTrack(source: mainDisplay,
-                                                                                options: (captureOptions as? ScreenShareCaptureOptions) ?? room._state.roomOptions.defaultScreenShareCaptureOptions,
-                                                                                reportStatistics: room._state.roomOptions.reportRemoteTrackStatistics)
-                        return try await self._publish(track: track, options: publishOptions)
-                    }
+                        if #available(macOS 12.3, *) {
+                            let mainDisplay = try await MacOSScreenCapturer.mainDisplaySource()
+                            let track = LocalVideoTrack.createMacOSScreenShareTrack(
+                                source: mainDisplay,
+                                options: (captureOptions as? ScreenShareCaptureOptions)
+                                    ?? room._state.roomOptions.defaultScreenShareCaptureOptions,
+                                reportStatistics: room._state.roomOptions
+                                    .reportRemoteTrackStatistics)
+                            return try await self._publish(track: track, options: publishOptions)
+                        }
                     #endif
                 }
             }
@@ -365,9 +405,10 @@ public extension LocalParticipant {
 
 extension LocalParticipant {
     // Publish additional (backup) codec when requested by server
-    func publish(additionalVideoCodec subscribedCodec: Livekit_SubscribedCodec,
-                 for localTrackPublication: LocalTrackPublication) async throws
-    {
+    func publish(
+        additionalVideoCodec subscribedCodec: Livekit_SubscribedCodec,
+        for localTrackPublication: LocalTrackPublication
+    ) async throws {
         let room = try requireRoom()
 
         let videoCodec = try subscribedCodec.toVideoCodec()
@@ -379,21 +420,27 @@ extension LocalParticipant {
         }
 
         if !videoCodec.isBackup {
-            throw LiveKitError(.invalidState, message: "Attempted to publish a non-backup video codec as backup")
+            throw LiveKitError(
+                .invalidState, message: "Attempted to publish a non-backup video codec as backup")
         }
 
         let publisher = try room.requirePublisher()
 
-        let publishOptions = (track.publishOptions as? VideoPublishOptions) ?? room._state.roomOptions.defaultVideoPublishOptions
+        let publishOptions =
+            (track.publishOptions as? VideoPublishOptions)
+            ?? room._state.roomOptions.defaultVideoPublishOptions
 
         // Should be already resolved...
         let dimensions = try await track.capturer.dimensionsCompleter.wait()
 
-        let encodings = Utils.computeVideoEncodings(dimensions: dimensions,
-                                                    publishOptions: publishOptions,
-                                                    overrideVideoCodec: videoCodec)
+        let encodings = Utils.computeVideoEncodings(
+            dimensions: dimensions,
+            publishOptions: publishOptions,
+            overrideVideoCodec: videoCodec)
 
-        log("[Publish/Backup] Using encodings: \(encodings.map { $0.toDebugString() }.joined(separator: ", "))")
+        log(
+            "[Publish/Backup] Using encodings: \(encodings.map { $0.toDebugString() }.joined(separator: ", "))"
+        )
 
         // Add transceiver first...
 
@@ -402,7 +449,8 @@ extension LocalParticipant {
         transInit.sendEncodings = encodings
 
         // Add transceiver to publisher pc...
-        let transceiver = try await publisher.addTransceiver(with: track.mediaTrack, transceiverInit: transInit)
+        let transceiver = try await publisher.addTransceiver(
+            with: track.mediaTrack, transceiverInit: transInit)
         log("[Publish] Added transceiver...")
 
         // Set codec...
@@ -411,17 +459,18 @@ extension LocalParticipant {
         let sender = transceiver.sender
 
         // Request a new track to the server
-        let addTrackResult = try await room.signalClient.sendAddTrack(cid: sender.senderId,
-                                                                      name: track.name,
-                                                                      type: track.kind.toPBType(),
-                                                                      source: track.source.toPBType())
-        {
+        let addTrackResult = try await room.signalClient.sendAddTrack(
+            cid: sender.senderId,
+            name: track.name,
+            type: track.kind.toPBType(),
+            source: track.source.toPBType()
+        ) {
             $0.sid = localTrackPublication.sid.stringValue
             $0.simulcastCodecs = [
                 Livekit_SimulcastCodec.with { sc in
                     sc.cid = sender.senderId
                     sc.codec = videoCodec.id
-                },
+                }
             ]
 
             $0.layers = dimensions.videoLayers(for: encodings)
@@ -438,22 +487,84 @@ extension LocalParticipant {
     }
 }
 
+// MARK: - RPC
+
+extension LocalParticipant {
+    /**
+       * Establishes the participant as a receiver for calls of the specified RPC method.
+       * Will overwrite any existing callback for the same method.
+       *
+       * - Parameters:
+       *   - method: The name of the indicated RPC method
+       *   - handler: Will be invoked when an RPC request for this method is received
+       * - Returns: A promise that resolves when the method is successfully registered
+       *
+       * Example:
+       * ```swift
+       * try await room.localParticipant?.registerRpcMethod(
+       *   "greet",
+       *   handler: { data in
+       *     print("Received greeting from \(data.callerIdentity): \(data.payload)")
+       *     return "Hello, \(data.callerIdentity)!"
+       *   }
+       * )
+       * ```
+       *
+       * See ``RpcInvocationData`` for more details on invocation params.
+       *
+       * The handler should return a string.
+       * If unable to respond within `responseTimeout`, the request will result in an error on the caller's side.
+       *
+       * You may throw errors of type ``RpcError`` with a string `message` in the handler,
+       * and they will be received on the caller's side with the message intact.
+       * Other errors thrown in your handler will not be transmitted as-is, and will instead arrive to the caller as `1500` ("Application Error").
+       */
+    @objc
+    public func registerRpcMethod(
+        _ method: String,
+        handler: @escaping (RpcInvocationData) async throws -> String
+    ) async throws {
+        _rpcHandlers = try await _rpcSerialRunner.run {
+            var handlers = _rpcHandlers
+            handlers[method] = handler
+            return handlers
+        }
+    }
+
+    /**
+   * Unregisters a previously registered RPC method.
+   *
+   * @param method - The name of the RPC method to unregister
+   */
+    @objc
+    public func unregisterRpcMethod(_ method: String) {
+        _rpcHandlers = try await _rpcSerialRunner.run {
+            var handlers = _rpcHandlers
+            handlers.removeValue(forKey: method)
+            return handlers
+        }
+    }
+
+}
 // MARK: - Helper
 
 extension [Livekit_SubscribedQuality] {
     /// Find the highest quality in the array
     var highest: Livekit_VideoQuality {
         reduce(Livekit_VideoQuality.off) { maxQuality, subscribedQuality in
-            subscribedQuality.enabled && subscribedQuality.quality > maxQuality ? subscribedQuality.quality : maxQuality
+            subscribedQuality.enabled && subscribedQuality.quality > maxQuality
+                ? subscribedQuality.quality : maxQuality
         }
     }
 }
 
 // MARK: - Private
 
-private extension LocalParticipant {
+extension LocalParticipant {
     @discardableResult
-    private func _publish(track: LocalTrack, options: TrackPublishOptions? = nil) async throws -> LocalTrackPublication {
+    private func _publish(track: LocalTrack, options: TrackPublishOptions? = nil) async throws
+        -> LocalTrackPublication
+    {
         log("[publish] \(track) options: \(String(describing: options ?? nil))...", .info)
 
         let room = try requireRoom()
@@ -474,7 +585,7 @@ private extension LocalParticipant {
         try Task.checkCancellation()
 
         do {
-            var dimensions: Dimensions? // Only for Video
+            var dimensions: Dimensions?  // Only for Video
 
             if let track = track as? LocalVideoTrack {
                 // Wait for Dimensions...
@@ -484,31 +595,42 @@ private extension LocalParticipant {
 
             var publishName: String? = nil
 
-            let populatorFunc: SignalClient.AddTrackRequestPopulator<LKRTCRtpTransceiverInit> = { populator in
+            let populatorFunc: SignalClient.AddTrackRequestPopulator<LKRTCRtpTransceiverInit> = {
+                populator in
 
                 let transInit = DispatchQueue.liveKitWebRTC.sync { LKRTCRtpTransceiverInit() }
                 transInit.direction = .sendOnly
 
                 if let track = track as? LocalVideoTrack {
                     guard let dimensions else {
-                        throw LiveKitError(.capturerDimensionsNotResolved, message: "VideoCapturer dimensions are not resolved")
+                        throw LiveKitError(
+                            .capturerDimensionsNotResolved,
+                            message: "VideoCapturer dimensions are not resolved")
                     }
 
-                    self.log("[publish] computing encode settings with dimensions: \(dimensions)...")
+                    self.log(
+                        "[publish] computing encode settings with dimensions: \(dimensions)...")
 
-                    let publishOptions = (options as? VideoPublishOptions) ?? room._state.roomOptions.defaultVideoPublishOptions
+                    let publishOptions =
+                        (options as? VideoPublishOptions)
+                        ?? room._state.roomOptions.defaultVideoPublishOptions
                     publishName = publishOptions.name
 
-                    let encodings = Utils.computeVideoEncodings(dimensions: dimensions,
-                                                                publishOptions: publishOptions,
-                                                                isScreenShare: track.source == .screenShareVideo)
+                    let encodings = Utils.computeVideoEncodings(
+                        dimensions: dimensions,
+                        publishOptions: publishOptions,
+                        isScreenShare: track.source == .screenShareVideo)
 
-                    self.log("[publish] Using encodings: \(encodings.map { $0.toDebugString() }.joined(separator: ", "))")
+                    self.log(
+                        "[publish] Using encodings: \(encodings.map { $0.toDebugString() }.joined(separator: ", "))"
+                    )
                     transInit.sendEncodings = encodings
 
                     let videoLayers = dimensions.videoLayers(for: encodings)
 
-                    self.log("[publish] using layers: \(videoLayers.map { String(describing: $0) }.joined(separator: ", "))")
+                    self.log(
+                        "[publish] using layers: \(videoLayers.map { String(describing: $0) }.joined(separator: ", "))"
+                    )
 
                     var simulcastCodecs: [Livekit_SimulcastCodec] = [
                         // Always add first codec...
@@ -517,7 +639,7 @@ private extension LocalParticipant {
                             if let preferredCodec = publishOptions.preferredCodec {
                                 $0.codec = preferredCodec.id
                             }
-                        },
+                        }
                     ]
 
                     if let backupCodec = publishOptions.preferredBackupCodec {
@@ -538,7 +660,9 @@ private extension LocalParticipant {
 
                 } else if track is LocalAudioTrack {
                     // additional params for Audio
-                    let publishOptions = (options as? AudioPublishOptions) ?? room._state.roomOptions.defaultAudioPublishOptions
+                    let publishOptions =
+                        (options as? AudioPublishOptions)
+                        ?? room._state.roomOptions.defaultAudioPublishOptions
                     publishName = publishOptions.name
 
                     populator.disableDtx = !publishOptions.dtx
@@ -548,7 +672,7 @@ private extension LocalParticipant {
                     self.log("[publish] maxBitrate: \(encoding.maxBitrate)")
 
                     transInit.sendEncodings = [
-                        RTC.createRtpEncodingParameters(encoding: encoding),
+                        RTC.createRtpEncodingParameters(encoding: encoding)
                     ]
                 }
 
@@ -561,17 +685,19 @@ private extension LocalParticipant {
             }
 
             // Request a new track to the server
-            let addTrackResult = try await room.signalClient.sendAddTrack(cid: track.mediaTrack.trackId,
-                                                                          name: publishName ?? track.name,
-                                                                          type: track.kind.toPBType(),
-                                                                          source: track.source.toPBType(),
-                                                                          encryption: room.e2eeManager?.e2eeOptions.encryptionType.toPBType() ?? .none,
-                                                                          populatorFunc)
+            let addTrackResult = try await room.signalClient.sendAddTrack(
+                cid: track.mediaTrack.trackId,
+                name: publishName ?? track.name,
+                type: track.kind.toPBType(),
+                source: track.source.toPBType(),
+                encryption: room.e2eeManager?.e2eeOptions.encryptionType.toPBType() ?? .none,
+                populatorFunc)
 
             log("[Publish] server responded trackInfo: \(addTrackResult.trackInfo)")
 
             // Add transceiver to pc
-            let transceiver = try await publisher.addTransceiver(with: track.mediaTrack, transceiverInit: addTrackResult.result)
+            let transceiver = try await publisher.addTransceiver(
+                with: track.mediaTrack, transceiverInit: addTrackResult.result)
             log("[Publish] Added transceiver: \(addTrackResult.trackInfo)...")
 
             do {
@@ -585,19 +711,24 @@ private extension LocalParticipant {
 
                 if track is LocalVideoTrack {
                     if let firstCodecMime = addTrackResult.trackInfo.codecs.first?.mimeType,
-                       let firstVideoCodec = try? VideoCodec.from(mimeType: firstCodecMime)
+                        let firstVideoCodec = try? VideoCodec.from(mimeType: firstCodecMime)
                     {
                         log("[Publish] First video codec: \(firstVideoCodec)")
                         track._state.mutate { $0.videoCodec = firstVideoCodec }
                     }
 
-                    let publishOptions = (options as? VideoPublishOptions) ?? room._state.roomOptions.defaultVideoPublishOptions
+                    let publishOptions =
+                        (options as? VideoPublishOptions)
+                        ?? room._state.roomOptions.defaultVideoPublishOptions
 
                     let setDegradationPreference: NSNumber? = {
-                        if let rtcDegradationPreference = publishOptions.degradationPreference.toRTCType() {
+                        if let rtcDegradationPreference = publishOptions.degradationPreference
+                            .toRTCType()
+                        {
                             return NSNumber(value: rtcDegradationPreference.rawValue)
                         } else if track.source == .screenShareVideo || publishOptions.simulcast {
-                            return NSNumber(value: RTCDegradationPreference.maintainResolution.rawValue)
+                            return NSNumber(
+                                value: RTCDegradationPreference.maintainResolution.rawValue)
                         }
                         return nil
                     }()
@@ -626,7 +757,8 @@ private extension LocalParticipant {
                 throw error
             }
 
-            let publication = LocalTrackPublication(info: addTrackResult.trackInfo, participant: self)
+            let publication = LocalTrackPublication(
+                info: addTrackResult.trackInfo, participant: self)
             await publication.set(track: track)
 
             add(publication: publication)
