@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-@testable import LiveKit
 import XCTest
+
+@testable import LiveKit
 
 class SerialRunnerActorTests: XCTestCase {
     let serialRunner = SerialRunnerActor<Void>()
@@ -27,11 +28,11 @@ class SerialRunnerActorTests: XCTestCase {
     func testSerialRuuner() async throws {
         // Run Tasks concurrently
         try await withThrowingTaskGroup(of: Void.self) { group in
-            for i in 1 ... 1000 {
+            for i in 1...1000 {
                 group.addTask {
                     try await self.serialRunner.run {
                         self.counterValue += 1
-                        let ns = UInt64(Double.random(in: 1 ..< 3) * 1_000_000)
+                        let ns = UInt64(Double.random(in: 1..<3) * 1_000_000)
                         print("executor1 task \(i) start, will wait \(ns)ns")
                         // Simulate random-ish time consuming task
                         try await Task.sleep(nanoseconds: ns)
@@ -54,7 +55,7 @@ class SerialRunnerActorTests: XCTestCase {
     func testSerialRunnerCancel() async throws {
         // Run Tasks concurrently
         await withTaskGroup(of: Void.self) { group in
-            for i in 1 ... 1000 {
+            for i in 1...1000 {
                 group.addTask {
                     let subTask = Task {
                         do {
@@ -66,7 +67,7 @@ class SerialRunnerActorTests: XCTestCase {
                                     self.counterValue -= 1
                                 }
 
-                                let ns = UInt64(Double.random(in: 1 ..< 3) * 1_000_000)
+                                let ns = UInt64(Double.random(in: 1..<3) * 1_000_000)
                                 print("executor1 task \(i) start, will wait \(ns)ns")
                                 // Simulate random-ish time consuming task
                                 try await Task.sleep(nanoseconds: ns)
@@ -157,5 +158,28 @@ class SerialRunnerActorTests: XCTestCase {
         print("completed tasks order: \(resultValues)")
         // Should be in order
         XCTAssertEqual(resultValues, ["task1", "task2", "task3"])
+    }
+
+    func testSerialRunnerWithNonThrowingBlock() async {
+        let runner = SerialRunnerActor<Int>()
+        var results: [Int] = []
+
+        await withTaskGroup(of: Void.self) { group in
+            // Add multiple tasks
+            for i in 1...3 {
+                group.addTask {
+                    let result = await runner.run {
+                        await Task.sleep(UInt64(0.1 * 1_000_000_000))
+                        return i
+                    }
+                    results.append(result)
+                }
+            }
+
+            await group.waitForAll()
+        }
+
+        // Results should be in order since tasks are executed serially
+        XCTAssertEqual(results, [1, 2, 3])
     }
 }
