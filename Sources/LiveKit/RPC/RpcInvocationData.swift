@@ -1,3 +1,5 @@
+import Foundation
+
 /**
  * Data passed to method handler for incoming RPC invocations
  */

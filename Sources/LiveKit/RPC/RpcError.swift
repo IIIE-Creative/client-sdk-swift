@@ -24,13 +24,13 @@ public class RpcError: Error {
         self.data = data
     }
 
-    public static func fromProto(_ proto: Livekit_RpcError) -> RpcError {
+    static func fromProto(_ proto: Livekit_RpcError) -> RpcError {
         return RpcError(code: Int(proto.code), message: proto.message, data: proto.data)
     }
 
-    public func toProto() -> Livekit_RpcError {
+    func toProto() -> Livekit_RpcError {
         var proto = Livekit_RpcError()
-        proto.code = Int32(code)
+        proto.code = UInt32(code)
         proto.message = message
         if let data = data {
             proto.data = data

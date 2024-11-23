@@ -18,9 +18,11 @@ import Foundation
 
 actor SerialRunnerActor<Value: Sendable> {
     private var previousTask: Task<Value, Error>?
-
-    func run(block: @Sendable @escaping () async throws -> Value) async throws -> Value {
-        let task = Task { [previousTask] in
+    
+    private func createTask<T>(
+        block: @Sendable @escaping () async throws -> T
+    ) -> Task<T, Error> {
+        Task { [previousTask] in
             // Wait for the previous task to complete, but cancel it if needed
             if let previousTask, !Task.isCancelled {
                 // If previous task is still running, wait for it
@@ -33,14 +35,28 @@ actor SerialRunnerActor<Value: Sendable> {
             // Run the new block
             return try await block()
         }
+    }
 
+    // Throwing version
+    func run(block: @Sendable @escaping () async throws -> Value) async throws -> Value {
+        let task = createTask(block: block)
         previousTask = task
 
         return try await withTaskCancellationHandler {
-            // Await the current task's result
             try await task.value
         } onCancel: {
-            // Ensure the task is canceled when requested
+            task.cancel()
+        }
+    }
+
+    // Non-throwing version
+    func run(block: @Sendable @escaping () async -> Value) async -> Value {
+        let task = createTask { await block() }
+        previousTask = task
+
+        return await withTaskCancellationHandler {
+            try! await task.value // the task is guaranteed to be non-throwing because block() is non-throwing
+        } onCancel: {
             task.cancel()
         }
     }

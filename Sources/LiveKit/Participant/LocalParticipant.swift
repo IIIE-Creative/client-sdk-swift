@@ -42,7 +42,9 @@ public class LocalParticipant: Participant {
 
     private var trackPermissions: [ParticipantTrackPermission] = []
 
-    private let _rpcSerialRunner = SerialRunnerActor<[String: (RpcInvocationData) async throws -> String]>()
+    private let _rpcSerialRunner = SerialRunnerActor<
+        [String: (RpcInvocationData) async throws -> String]
+    >()
     private var _rpcHandlers: [String: (RpcInvocationData) async throws -> String] = [:]
 
     /// publish a new audio track to the Room
@@ -519,13 +521,12 @@ extension LocalParticipant {
        * and they will be received on the caller's side with the message intact.
        * Other errors thrown in your handler will not be transmitted as-is, and will instead arrive to the caller as `1500` ("Application Error").
        */
-    @objc
     public func registerRpcMethod(
         _ method: String,
         handler: @escaping (RpcInvocationData) async throws -> String
-    ) async throws {
-        _rpcHandlers = try await _rpcSerialRunner.run {
-            var handlers = _rpcHandlers
+    ) async {
+        _rpcHandlers = await _rpcSerialRunner.run {
+            var handlers = self._rpcHandlers
             handlers[method] = handler
             return handlers
         }
@@ -536,10 +537,9 @@ extension LocalParticipant {
    *
    * @param method - The name of the RPC method to unregister
    */
-    @objc
-    public func unregisterRpcMethod(_ method: String) {
-        _rpcHandlers = try await _rpcSerialRunner.run {
-            var handlers = _rpcHandlers
+    public func unregisterRpcMethod(_ method: String) async throws {
+        _rpcHandlers = await _rpcSerialRunner.run {
+            var handlers = self._rpcHandlers
             handlers.removeValue(forKey: method)
             return handlers
         }
