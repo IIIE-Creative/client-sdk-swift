@@ -180,15 +180,7 @@ public class Participant: NSObject, Loggable {
                 }
             }
 
-            // Notify when state mutates
-            Task.detached { @MainActor in
-                // Notify Participant
-                self.objectWillChange.send()
-                if let room = self._room {
-                    // Notify Room
-                    room.objectWillChange.send()
-                }
-            }
+            // State mutations are automatically observed with @Observable
         }
     }
 

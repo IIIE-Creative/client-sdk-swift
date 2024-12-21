@@ -142,21 +142,7 @@ public class TrackPublication: NSObject, Loggable {
     }
 
     func notifyObjectWillChange() {
-        // Notify UI that the object has changed
-        Task.detached { @MainActor in
-            // Notify TrackPublication
-            self.objectWillChange.send()
-
-            if let participant = self.participant {
-                // Notify Participant
-                participant.objectWillChange.send()
-
-                if let room = participant._room {
-                    // Notify Room
-                    room.objectWillChange.send()
-                }
-            }
-        }
+        // With @Observable, we don't need to manually notify changes anymore
     }
 
     func updateFromInfo(info: Livekit_TrackInfo) {
@@ -220,10 +206,7 @@ extension TrackPublication: TrackDelegateInternal {
             }
 
             // TrackPublication.isMuted is a computed property depending on Track.isMuted
-            // so emit event on TrackPublication when Track.isMuted updates
-            Task.detached { @MainActor in
-                self.objectWillChange.send()
-            }
+            // State changes are automatically observed with @Observable
         }
     }
 }

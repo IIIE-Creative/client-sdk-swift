@@ -101,7 +101,7 @@ public class Room: NSObject, Loggable {
     public var e2eeManager: E2EEManager?
 
     @objc
-    public lazy var localParticipant: LocalParticipant = .init(room: self)
+    public var localParticipant: LocalParticipant!
 
     let primaryTransportConnectedCompleter = AsyncCompleter<Void>(label: "Primary transport connect", defaultTimeout: .defaultTransportState)
     let publisherTransportConnectedCompleter = AsyncCompleter<Void>(label: "Publisher transport connect", defaultTimeout: .defaultTransportState)
@@ -110,8 +110,8 @@ public class Room: NSObject, Loggable {
 
     // MARK: - DataChannels
 
-    lazy var subscriberDataChannel = DataChannelPair(delegate: self)
-    lazy var publisherDataChannel = DataChannelPair(delegate: self)
+    let subscriberDataChannel: DataChannelPair
+    let publisherDataChannel: DataChannelPair
 
     var _blockProcessQueue = DispatchQueue(label: "LiveKitSDK.engine.pendingBlocks",
                                            qos: .default)
@@ -196,7 +196,20 @@ public class Room: NSObject, Loggable {
         _state = StateSync(State(connectOptions: connectOptions ?? ConnectOptions(),
                                  roomOptions: roomOptions ?? RoomOptions()))
 
+        // Initialize non-self-referencing properties first
+        subscriberDataChannel = DataChannelPair()
+        publisherDataChannel = DataChannelPair()
+        e2eeManager = nil
+
         super.init()
+
+        // Initialize self-referencing properties after super.init
+        localParticipant = LocalParticipant(room: self)
+
+        // Set up delegates
+        subscriberDataChannel.delegates.add(delegate: self)
+        publisherDataChannel.delegates.add(delegate: self)
+
         // log sdk & os versions
         log("sdk: \(LiveKitSDK.version), os: \(String(describing: Utils.os()))(\(Utils.osVersionString())), modelId: \(String(describing: Utils.modelIdentifier() ?? "unknown"))")
 
@@ -271,10 +284,7 @@ public class Room: NSObject, Loggable {
                 }
             }
 
-            // Notify Room when state mutates
-            Task.detached { @MainActor in
-                self.objectWillChange.send()
-            }
+            // State mutations are automatically observed with @Observable
         }
     }
 

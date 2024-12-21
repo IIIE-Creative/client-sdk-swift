@@ -56,7 +56,7 @@ public class E2EEManager: NSObject, Loggable {
     // Reference to Room
     private weak var _room: Room?
 
-    private lazy var delegateAdapter: DelegateAdapter = .init(target: self)
+    private let delegateAdapter: DelegateAdapter
 
     private var _state = StateSync(State())
 
@@ -68,6 +68,9 @@ public class E2EEManager: NSObject, Loggable {
 
     public init(e2eeOptions: E2EEOptions) {
         self.e2eeOptions = e2eeOptions
+        self.delegateAdapter = DelegateAdapter()
+        super.init()
+        self.delegateAdapter.target = self
     }
 
     public func setup(room: Room) {
