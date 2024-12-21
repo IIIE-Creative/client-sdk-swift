@@ -19,6 +19,23 @@ import CoreMedia
 @testable import LiveKit
 import XCTest
 
+// Helper class for testing
+class ParticipantDelegateHandler: ParticipantDelegate {
+    private let didSubscribeHandler: ((Participant, TrackPublication?) -> Void)?
+    
+    init(didSubscribe: @escaping (Participant, TrackPublication?) -> Void) {
+        self.didSubscribeHandler = didSubscribe
+    }
+    
+    func participant(_ participant: Participant, didSubscribe publication: TrackPublication?) {
+        didSubscribeHandler?(participant, publication)
+    }
+    
+    func cancel() {
+        // no-op for testing
+    }
+}
+
 class PublishMicrophoneTests: XCTestCase {
     func testConcurrentMicPublish() async throws {
         try await withRooms([RoomTestingOptions(canPublish: true)]) { rooms in
@@ -81,13 +98,16 @@ class PublishMicrophoneTests: XCTestCase {
 
             var remoteAudioTrack: RemoteAudioTrack?
 
-            // Start watching RemoteParticipant for audio track...
-            let watchParticipant = remoteParticipant.objectWillChange.sink { _ in
-                if let track = remoteParticipant.firstAudioPublication?.track as? RemoteAudioTrack, remoteAudioTrack == nil {
+            // Start watching RemoteParticipant for audio track using delegate...
+            let delegate = ParticipantDelegateHandler { participant, publication in
+                if let track = (participant as? RemoteParticipant)?.audioTracks.first?.track as? RemoteAudioTrack,
+                   remoteAudioTrack == nil
+                {
                     remoteAudioTrack = track
                     didSubscribeToRemoteAudioTrack.fulfill()
                 }
             }
+            remoteParticipant.delegates.add(delegate: delegate)
 
             // Publish mic
             try await room1.localParticipant.setMicrophone(enabled: true)
@@ -123,7 +143,7 @@ class PublishMicrophoneTests: XCTestCase {
             // Remove audio frame watcher...
             remoteAudioTrack.remove(audioRenderer: audioFrameWatcher)
             // Clean up
-            watchParticipant.cancel()
+            delegate.cancel()
         }
     }
 }

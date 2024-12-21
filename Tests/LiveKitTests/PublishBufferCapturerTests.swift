@@ -65,13 +65,16 @@ class PublishBufferCapturerTests: XCTestCase {
 
             var remoteVideoTrack: RemoteVideoTrack?
 
-            // Start watching RemoteParticipant for audio track...
-            let watchParticipant = remoteParticipant.objectWillChange.sink { _ in
-                if let track = remoteParticipant.videoTracks.first?.track as? RemoteVideoTrack, remoteVideoTrack == nil {
+            // Start watching RemoteParticipant for video track using delegate...
+            let delegate = ParticipantDelegateHandler { participant, publication in
+                if let track = (participant as? RemoteParticipant)?.videoTracks.first?.track as? RemoteVideoTrack,
+                   remoteVideoTrack == nil
+                {
                     remoteVideoTrack = track
                     didSubscribeToRemoteVideoTrack.fulfill()
                 }
             }
+            remoteParticipant.delegates.add(delegate: delegate)
 
             // Wait for track...
             print("Waiting for first video track...")
@@ -97,7 +100,7 @@ class PublishBufferCapturerTests: XCTestCase {
             // Wait for video to complete...
             try await captureTask.value
             // Clean up
-            watchParticipant.cancel()
+            delegate.cancel()
         }
     }
 }

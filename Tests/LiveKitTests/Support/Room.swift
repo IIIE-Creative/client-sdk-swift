@@ -17,6 +17,23 @@
 @testable import LiveKit
 import XCTest
 
+// Helper class for testing
+class RoomDelegateHandler: RoomDelegate {
+    private let didUpdateHandler: ((Room) -> Void)?
+    
+    init(didUpdate: @escaping (Room) -> Void) {
+        self.didUpdateHandler = didUpdate
+    }
+    
+    func room(_ room: Room, didUpdate state: Room.State, oldState: Room.State) {
+        didUpdateHandler?(room)
+    }
+    
+    func cancel() {
+        // no-op for testing
+    }
+}
+
 struct RoomTestingOptions {
     let delegate: RoomDelegate?
     let canPublish: Bool
@@ -131,24 +148,25 @@ extension XCTestCase {
                 let exceptSelfIdentity = allIdentities.filter { $0 != identity }
                 print("Will wait for remote participants: \(exceptSelfIdentity)")
 
-                // Watch Room
-                let watch = room.objectWillChange.sink { _ in
+                // Watch Room using delegate
+                let delegate = RoomDelegateHandler { room in
                     let remoteIdentities = room.remoteParticipants.map(\.key.stringValue)
                     if remoteIdentities.hasSameElements(as: exceptSelfIdentity) {
                         expectation.fulfill()
                     }
                 }
+                room.delegates.add(delegate: delegate)
 
-                return (expectation: expectation, watch: watch)
+                return (expectation: expectation, delegate: delegate)
             }
 
             // Wait for all expectations
             let allExpectations = expectationAndWatches.map(\.expectation)
             await fulfillment(of: allExpectations, timeout: 30)
 
-            // Cancel all watch
+            // Remove all delegates
             for element in expectationAndWatches {
-                element.watch.cancel()
+                element.delegate.cancel()
             }
         }
 
