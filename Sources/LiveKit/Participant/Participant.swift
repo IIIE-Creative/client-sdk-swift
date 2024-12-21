@@ -18,12 +18,14 @@ import Foundation
 
 #if swift(>=5.9)
 internal import LiveKitWebRTC
+import Observation
 #else
 @_implementationOnly import LiveKitWebRTC
 #endif
 
 @objc
-public class Participant: NSObject, ObservableObject, Loggable {
+@Observable
+public class Participant: NSObject, Loggable {
     // MARK: - MulticastDelegate
 
     public let delegates = MulticastDelegate<ParticipantDelegate>(label: "ParticipantDelegate")

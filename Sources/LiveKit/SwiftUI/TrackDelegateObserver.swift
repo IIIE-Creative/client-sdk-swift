@@ -15,14 +15,16 @@
  */
 
 import Foundation
+import Observation
 
 /// Helper class to observer ``TrackDelegate`` from Swift UI.
-public class TrackDelegateObserver: ObservableObject, TrackDelegate {
+@Observable
+public class TrackDelegateObserver: TrackDelegate {
     private let track: Track
 
-    @Published public var dimensions: Dimensions?
-    @Published public var statistics: TrackStatistics?
-    @Published public var simulcastStatistics: [VideoCodec: TrackStatistics]
+    public var dimensions: Dimensions?
+    public var statistics: TrackStatistics?
+    public var simulcastStatistics: [VideoCodec: TrackStatistics]
 
     public var allStatisticts: [TrackStatistics] {
         var result: [TrackStatistics] = []

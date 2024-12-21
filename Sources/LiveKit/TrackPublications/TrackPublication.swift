@@ -15,9 +15,11 @@
  */
 
 import Foundation
+import Observation
 
 @objc
-public class TrackPublication: NSObject, ObservableObject, Loggable {
+@Observable
+public class TrackPublication: NSObject, Loggable {
     // MARK: - Public properties
 
     @objc

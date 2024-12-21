@@ -20,8 +20,13 @@ import Foundation
 import Network
 #endif
 
+#if swift(>=5.9)
+import Observation
+#endif
+
 @objc
-public class Room: NSObject, ObservableObject, Loggable {
+@Observable
+public class Room: NSObject, Loggable {
     // MARK: - MulticastDelegate
 
     public let delegates = MulticastDelegate<RoomDelegate>(label: "RoomDelegate")

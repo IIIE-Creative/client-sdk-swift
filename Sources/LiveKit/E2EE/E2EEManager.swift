@@ -18,12 +18,14 @@ import Foundation
 
 #if swift(>=5.9)
 internal import LiveKitWebRTC
+import Observation
 #else
 @_implementationOnly import LiveKitWebRTC
 #endif
 
 @objc
-public class E2EEManager: NSObject, ObservableObject, Loggable {
+@Observable
+public class E2EEManager: NSObject, Loggable {
     // Private delegate adapter to hide RTCFrameCryptorDelegate symbol
     private class DelegateAdapter: NSObject, LKRTCFrameCryptorDelegate {
         weak var target: E2EEManager?
