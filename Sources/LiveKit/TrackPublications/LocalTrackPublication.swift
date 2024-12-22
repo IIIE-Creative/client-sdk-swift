@@ -18,6 +18,7 @@ import Combine
 import Foundation
 
 @objc
+@Observable
 public class LocalTrackPublication: TrackPublication {
     // indicates whether the track was suspended(muted) by the SDK
     var _suspended: Bool = false
